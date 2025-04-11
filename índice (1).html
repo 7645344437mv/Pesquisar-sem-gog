@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Site de Perguntas e Respostas</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    input, textarea, button {
+      padding: 10px;
+      margin-top: 10px;
+      display: block;
+    }
+    .pergunta {
+      background: #f9f9f9;
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 8px;
+    }
+    .resposta {
+      background: #e7f7e7;
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 5px;
+      position: relative;
+    }
+    .like-btn {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+    }
+    .like-btn[disabled] {
+      background: #888;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h1>Faça sua pergunta</h1>
+  <input type="text" id="campoPergunta" placeholder="Digite sua pergunta aqui..." size="50">
+  <button onclick="enviarPergunta()">Enviar pergunta</button>
+
+  <div id="listaPerguntas">
+    <h2>Perguntas:</h2>
+  </div>
+
+  <script>
+    const perguntas = [];
+
+    function getLikedRespostas() {
+      return JSON.parse(localStorage.getItem("likes") || "[]");
+    }
+
+    function salvarLike(indexPergunta, indexResposta) {
+      const likes = getLikedRespostas();
+      const id = `${indexPergunta}_${indexResposta}`;
+      if (!likes.includes(id)) {
+        likes.push(id);
+        localStorage.setItem("likes", JSON.stringify(likes));
+      }
+    }
+
+    function jaDeuLike(indexPergunta, indexResposta) {
+      const id = `${indexPergunta}_${indexResposta}`;
+      return getLikedRespostas().includes(id);
+    }
+
+    function enviarPergunta() {
+      const campo = document.getElementById("campoPergunta");
+      const texto = campo.value.trim();
+      if (texto === "") return;
+
+      const novaPergunta = {
+        texto: texto,
+        respostas: []
+      };
+
+      perguntas.push(novaPergunta);
+      renderPerguntas();
+      campo.value = "";
+    }
+
+    function enviarResposta(indexPergunta, campoId) {
+      const campo = document.getElementById(campoId);
+      const respostaTexto = campo.value.trim();
+      if (respostaTexto === "") return;
+
+      perguntas[indexPergunta].respostas.push({
+        texto: respostaTexto,
+        likes: 0
+      });
+
+      renderPerguntas();
+    }
+
+    function darLike(indexPergunta, indexResposta) {
+      if (jaDeuLike(indexPergunta, indexResposta)) return;
+
+      perguntas[indexPergunta].respostas[indexResposta].likes++;
+      salvarLike(indexPergunta, indexResposta);
+      renderPerguntas();
+    }
+
+    function renderPerguntas() {
+      const container = document.getElementById("listaPerguntas");
+      container.innerHTML = "<h2>Perguntas:</h2>";
+
+      perguntas.forEach((pergunta, indexPergunta) => {
+        const divPergunta = document.createElement("div");
+        divPergunta.className = "pergunta";
+        divPergunta.innerHTML = `<strong>${pergunta.texto}</strong>`;
+
+        const campoId = `resposta_${indexPergunta}`;
+        divPergunta.innerHTML += `
+          <textarea id="${campoId}" rows="2" cols="50" placeholder="Responder..."></textarea>
+          <button onclick="enviarResposta(${indexPergunta}, '${campoId}')">Enviar resposta</button>
+        `;
+
+        const respostasOrdenadas = pergunta.respostas.slice().sort((a, b) => b.likes - a.likes);
+        respostasOrdenadas.forEach((resposta, i) => {
+          const indexOriginal = pergunta.respostas.indexOf(resposta);
+          const deuLike = jaDeuLike(indexPergunta, indexOriginal);
+
+          const divResposta = document.createElement("div");
+          divResposta.className = "resposta";
+          divResposta.innerHTML = `
+            ${resposta.texto}
+            <button class="like-btn" onclick="darLike(${indexPergunta}, ${indexOriginal})" ${deuLike ? 'disabled' : ''}>
+              Curtir (${resposta.likes})
+            </button>
+          `;
+          divPergunta.appendChild(divResposta);
+        });
+
+        container.appendChild(divPergunta);
+      });
+    }
+  </script>
+</body>
+</html>
